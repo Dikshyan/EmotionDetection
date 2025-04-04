@@ -1,0 +1,53 @@
+.custom-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+  }
+  
+  .custom-button.default {
+    background-color: #3b82f6;
+    color: white;
+  }
+  
+  .custom-button.default:hover {
+    background-color: #2563eb;
+  }
+  
+  .custom-button.danger {
+    background-color: #ef4444;
+    color: white;
+  }
+  
+  .custom-button.danger:hover {
+    background-color: #dc2626;
+  }
+  
+  .custom-button.outline {
+    background-color: transparent;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .custom-button.outline:hover {
+    background-color: #f8fafc;
+  }
+  
+  .custom-button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .custom-button svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  

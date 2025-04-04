@@ -1,0 +1,89 @@
+.emotion-detection-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  @media (min-width: 768px) {
+    .emotion-detection-container {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  
+  .camera-container {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: #0f172a;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .camera-placeholder {
+    color: #94a3b8;
+  }
+  
+  .loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .loading-indicator svg {
+    width: 32px;
+    height: 32px;
+    color: #94a3b8;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .camera-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  
+  .hidden {
+    display: none;
+  }
+  
+  .emotion-badge-container {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+  
+  .emotions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .emotion-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .emotion-header {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .status-text {
+    font-size: 0.875rem;
+    color: #64748b;
+  }
+  
+  
