@@ -1,0 +1,37 @@
+import cv2
+from deepface import DeepFace
+
+class EmotionDetector:
+    def __init__(self):
+        pass
+
+    def detect_emotion(self, frame):
+        """
+        Process a single frame and return emotion detection results
+        """
+        try:
+            # Analyze the frame for emotions
+            result = DeepFace.analyze(
+                frame, 
+                actions=['emotion'], 
+                enforce_detection=False, 
+                detector_backend='opencv'
+            )
+            
+            return {
+                'success': True,
+                'emotion': result[0]['dominant_emotion'],
+                'emotions': result[0]['emotion']
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+def detect_emotion_realtime():
+    """
+    Returns an instance of EmotionDetector for processing frames from the UI
+    """
+    return EmotionDetector()

@@ -1,0 +1,19 @@
+# Web framework and communication
+flask==2.3.3
+flask-socketio==5.3.6
+python-socketio==5.10.0
+flask-cors==4.0.0
+eventlet==0.33.3
+
+# Image processing
+opencv-python==4.8.0.76
+numpy==1.24.3
+
+# Emotion detection and required dependencies
+deepface==0.0.79
+tensorflow==2.14.0  # Required by DeepFace
+keras==2.14.0       # Required by DeepFace
+mtcnn==0.1.1        # Face detection used by DeepFace
+retina-face==0.0.13 # Alternative face detector
+gdown==4.7.1        # For downloading models
+tqdm==4.66.1        # Progress bars for downloads

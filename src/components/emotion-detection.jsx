@@ -1,113 +1,148 @@
-"use client"
+"use client";
 
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Camera, CameraOff, RefreshCw } from "lucide-react"
+import { useState, useRef, useEffect } from "react";
+import { io } from "socket.io-client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Camera, CameraOff, RefreshCw } from "lucide-react";
+
+const SOCKET_SERVER_URL = "http://127.0.0.1:5000";
 
 export default function EmotionDetection() {
-  const [isActive, setIsActive] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [emotions, setEmotions] = useState([
-    { type: "Happy", confidence: 0.8, color: "bg-green-500" },
-    { type: "Sad", confidence: 0.1, color: "bg-blue-500" },
-    { type: "Angry", confidence: 0.05, color: "bg-red-500" },
-    { type: "Surprised", confidence: 0.03, color: "bg-yellow-500" },
-    { type: "Neutral", confidence: 0.02, color: "bg-gray-500" },
-  ])
-  const [dominantEmotion, setDominantEmotion] = useState(null)
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
+  const [isActive, setIsActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [emotions, setEmotions] = useState([]);
+  const [dominantEmotion, setDominantEmotion] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const socketRef = useRef(null);
+  const sendIntervalRef = useRef(null);
 
   useEffect(() => {
-    // Find the emotion with highest confidence
-    if (emotions.length > 0) {
-      const dominant = emotions.reduce((prev, current) => (prev.confidence > current.confidence ? prev : current))
-      setDominantEmotion(dominant)
-    }
-  }, [emotions])
+    return () => {
+      // Cleanup function
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      if (sendIntervalRef.current) {
+        clearInterval(sendIntervalRef.current);
+      }
+      stopCamera();
+    };
+  }, []);
 
   const startCamera = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
+      // Initialize Socket.IO connection
+      if (!socketRef.current) {
+        socketRef.current = io(SOCKET_SERVER_URL);
+        
+        socketRef.current.on('connect', () => {
+          console.log('Connected to emotion detection server');
+        });
+
+        socketRef.current.on('error', (error) => {
+          console.error('Socket error:', error);
+        });
+
+        socketRef.current.on('emotion_result', (data) => {
+          if (data.success) {
+            const emotionData = Object.entries(data.emotions).map(([type, confidence]) => ({
+              type,
+              confidence,
+              color: getEmotionColor(type),
+            }));
+            setEmotions(emotionData);
+
+            const dominant = emotionData.reduce((prev, current) =>
+              prev.confidence > current.confidence ? prev : current
+            );
+            setDominantEmotion(dominant);
+          } else {
+            console.error("Emotion detection error:", data.error);
+          }
+        });
+      }
+
+      // Request camera access
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
-      })
+        video: { 
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
+      });
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        setIsActive(true)
-
-        // Simulate emotion detection (in a real app, you'd connect to an API here)
-        simulateEmotionDetection()
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play();
+          setIsActive(true);
+          sendFramesToBackend();
+        };
       }
     } catch (err) {
-      console.error("Error accessing camera:", err)
+      console.error("Error starting camera:", err);
+      setIsActive(false);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject
-      const tracks = stream.getTracks()
-
-      tracks.forEach((track) => track.stop())
-      videoRef.current.srcObject = null
-      setIsActive(false)
+      const stream = videoRef.current.srcObject;
+      const tracks = stream.getTracks();
+      tracks.forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
     }
-  }
+    if (sendIntervalRef.current) {
+      clearInterval(sendIntervalRef.current);
+    }
+    setIsActive(false);
+    setEmotions([]);
+    setDominantEmotion(null);
+  };
 
-  const simulateEmotionDetection = () => {
-    // This function simulates emotion detection
-    // In a real application, you would call your emotion detection API here
-
-    const updateInterval = setInterval(() => {
-      if (!isActive) {
-        clearInterval(updateInterval)
-        return
+  const sendFramesToBackend = () => {
+    sendIntervalRef.current = setInterval(() => {
+      if (!isActive || !videoRef.current || !canvasRef.current || !socketRef.current) {
+        clearInterval(sendIntervalRef.current);
+        return;
       }
 
-      // Capture frame from video to canvas (for demonstration)
-      if (canvasRef.current && videoRef.current) {
-        const context = canvasRef.current.getContext("2d")
-        if (context) {
-          canvasRef.current.width = videoRef.current.videoWidth
-          canvasRef.current.height = videoRef.current.videoHeight
-          context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height)
-        }
+      const context = canvasRef.current.getContext("2d");
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+
+        const base64Image = canvasRef.current.toDataURL("image/jpeg", 0.8);
+        socketRef.current.emit("video_frame", { image: base64Image });
       }
+    }, 500);
+  };
 
-      // Simulate changing emotions
-      setEmotions((prev) => {
-        return prev
-          .map((emotion) => {
-            // Randomly adjust confidence levels for demo purposes
-            let newConfidence = emotion.confidence + (Math.random() * 0.1 - 0.05)
-            newConfidence = Math.max(0.01, Math.min(0.95, newConfidence))
-            return { ...emotion, confidence: newConfidence }
-          })
-          .sort((a, b) => b.confidence - a.confidence)
-      })
-    }, 1000)
-
-    return () => clearInterval(updateInterval)
-  }
-
-  const resetDetection = () => {
-    stopCamera()
-    setEmotions([
-      { type: "Happy", confidence: 0.8, color: "bg-green-500" },
-      { type: "Sad", confidence: 0.1, color: "bg-blue-500" },
-      { type: "Angry", confidence: 0.05, color: "bg-red-500" },
-      { type: "Surprised", confidence: 0.03, color: "bg-yellow-500" },
-      { type: "Neutral", confidence: 0.02, color: "bg-gray-500" },
-    ])
-    startCamera()
-  }
+  const getEmotionColor = (emotion) => {
+    switch (emotion.toLowerCase()) {
+      case "happy":
+        return "bg-green-500";
+      case "sad":
+        return "bg-blue-500";
+      case "angry":
+        return "bg-red-500";
+      case "surprised":
+        return "bg-yellow-500";
+      case "neutral":
+        return "bg-gray-500";
+      default:
+        return "bg-gray-400";
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -135,7 +170,9 @@ export default function EmotionDetection() {
 
             {dominantEmotion && isActive && (
               <div className="absolute top-2 right-2">
-                <Badge className={`${dominantEmotion.color} text-white`}>{dominantEmotion.type}</Badge>
+                <Badge className={`${dominantEmotion.color} text-white`}>
+                  {dominantEmotion.type}
+                </Badge>
               </div>
             )}
           </div>
@@ -152,10 +189,6 @@ export default function EmotionDetection() {
               Stop Camera
             </Button>
           )}
-          <Button onClick={resetDetection} variant="outline" disabled={!isActive}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Reset
-          </Button>
         </CardFooter>
       </Card>
 
@@ -172,18 +205,23 @@ export default function EmotionDetection() {
                   <span>{emotion.type}</span>
                   <span>{Math.round(emotion.confidence * 100)}%</span>
                 </div>
-                <Progress value={emotion.confidence * 100} className={`h-2 ${emotion.color}`} />
+                <Progress 
+                  value={emotion.confidence * 100} 
+                  className={`h-2 ${emotion.color}`} 
+                />
               </div>
             ))}
           </div>
         </CardContent>
         <CardFooter>
           <p className="text-sm text-muted-foreground">
-            {isActive ? "Analyzing facial expressions in real-time..." : "Start the camera to begin emotion detection"}
+            {isActive 
+              ? "Analyzing facial expressions in real-time..." 
+              : "Start the camera to begin emotion detection"
+            }
           </p>
         </CardFooter>
       </Card>
     </div>
-  )
+  );
 }
-
